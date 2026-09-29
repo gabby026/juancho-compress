@@ -201,7 +201,7 @@ final class JuanchoArchive {
         let fm = FileManager.default
         guard let enumerator = fm.enumerator(at: root,
                                              includingPropertiesForKeys: [.isRegularFileKey, .fileSizeKey, .isSymbolicLinkKey],
-                                             options: [.skipsHiddenFiles]) else { return [] }
+                                             options: []) else { return [] }
         var result: [SourceFile] = []
         for case let url as URL in enumerator {
             let values = try url.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey, .isSymbolicLinkKey])
