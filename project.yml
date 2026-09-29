@@ -1,6 +1,7 @@
 name: JuanchoCompress
 options:
   bundleIdPrefix: com.gabby026
+  xcodeVersion: "15.0"
   deploymentTarget:
     iOS: "16.0"
 targets:
