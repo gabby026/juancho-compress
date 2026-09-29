@@ -1,0 +1,39 @@
+name: Build IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: xcodegen generate
+      - name: Build unsigned app
+        run: |
+          xcodebuild \
+            -project JuanchoCompress.xcodeproj \
+            -scheme JuanchoCompress \
+            -sdk iphoneos \
+            -configuration Release \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
+      - name: Package IPA
+        run: |
+          rm -rf Payload JuanchoCompress.ipa
+          mkdir Payload
+          cp -R build/Build/Products/Release-iphoneos/JuanchoCompress.app Payload/
+          zip -r JuanchoCompress.ipa Payload
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: JuanchoCompress-IPA
+          path: JuanchoCompress.ipa
+          if-no-files-found: error
