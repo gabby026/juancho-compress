@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -17,14 +17,7 @@ jobs:
         run: xcodegen generate
       - name: Build unsigned app
         run: |
-          xcodebuild \
-            -project JuanchoCompress.xcodeproj \
-            -scheme JuanchoCompress \
-            -sdk iphoneos \
-            -configuration Release \
-            -derivedDataPath build \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO
+          xcodebuild             -project JuanchoCompress.xcodeproj             -scheme JuanchoCompress             -sdk iphoneos             -configuration Release             -derivedDataPath build             CODE_SIGNING_ALLOWED=NO             CODE_SIGNING_REQUIRED=NO
       - name: Package IPA
         run: |
           rm -rf Payload JuanchoCompress.ipa
