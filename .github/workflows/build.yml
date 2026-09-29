@@ -11,19 +11,70 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Install XcodeGen
         run: brew install xcodegen
+
       - name: Generate Xcode project
         run: xcodegen generate
+
       - name: Build unsigned app
         run: |
-          xcodebuild             -project JuanchoCompress.xcodeproj             -scheme JuanchoCompress             -sdk iphoneos             -configuration Release             -derivedDataPath build             CODE_SIGNING_ALLOWED=NO             CODE_SIGNING_REQUIRED=NO
+          xcodebuild \
+            -project JuanchoCompress.xcodeproj \
+            -scheme JuanchoCompress \
+            -sdk iphoneos \
+            -configuration Release \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Sign for TrollStore / unsandboxed Filza access
+        run: |
+          ENTITLEMENTS="$RUNNER_TEMP/JuanchoEntitlements.plist"
+
+          cat > "$ENTITLEMENTS" <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>com.apple.private.security.no-sandbox</key>
+              <true/>
+              <key>platform-application</key>
+              <true/>
+              <key>com.apple.private.security.storage.AppDataContainers</key>
+              <true/>
+          </dict>
+          </plist>
+          PLIST
+
+          /usr/bin/codesign \
+            --force \
+            --sign - \
+            --entitlements "$ENTITLEMENTS" \
+            "build/Build/Products/Release-iphoneos/JuanchoCompress.app"
+
+          /usr/bin/codesign \
+            -d --entitlements :- \
+            "build/Build/Products/Release-iphoneos/JuanchoCompress.app"
+
+      - name: Verify app bundle
+        run: |
+          APP="build/Build/Products/Release-iphoneos/JuanchoCompress.app"
+          test -f "$APP/JuanchoCompress"
+          test -f "$APP/Info.plist"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$APP/Info.plist"
+          file "$APP/JuanchoCompress"
+          /usr/bin/codesign -vv "$APP"
+
       - name: Package IPA
         run: |
           rm -rf Payload JuanchoCompress.ipa
           mkdir Payload
           cp -R build/Build/Products/Release-iphoneos/JuanchoCompress.app Payload/
-          zip -r JuanchoCompress.ipa Payload
+          cd .
+          zip -qry JuanchoCompress.ipa Payload
+
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
