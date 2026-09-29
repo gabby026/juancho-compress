@@ -1,0 +1,20 @@
+name: JuanchoCompress
+options:
+  bundleIdPrefix: com.gabby026
+  deploymentTarget:
+    iOS: "16.0"
+targets:
+  JuanchoCompress:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources/JuanchoCompress
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.gabby026.juanchocompress
+        INFOPLIST_FILE: Info.plist
+        SWIFT_VERSION: 5.9
+        TARGETED_DEVICE_FAMILY: "1,2"
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGNING_ALLOWED: NO
+        CODE_SIGNING_REQUIRED: NO
