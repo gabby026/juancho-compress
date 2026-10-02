@@ -51,8 +51,13 @@ jobs:
         working-directory: AssetsToolsNative
         shell: pwsh
         run: |
-          cmake --preset x64-release
-          cmake --build out\build\x64-release --config Release
+          $vswhere = (Get-Item 'Env:ProgramFiles(x86)').Value + '\Microsoft Visual Studio\Installer\vswhere.exe'
+          $vsPath = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild -property installationPath
+          if (-not $vsPath) { throw "Visual Studio installation was not found." }
+          $devCmd = Join-Path $vsPath 'Common7\Tools\VsDevCmd.bat'
+          if (-not (Test-Path $devCmd)) { throw "VsDevCmd.bat was not found." }
+          cmd /c ""$devCmd" -arch=x64 -host_arch=x64 && cmake --preset x64-release && cmake --build out\build\x64-release --config Release"
+          if ($LASTEXITCODE -ne 0) { throw "Native texture encoder build failed." }
 
       - name: Fetch classdata.tpk
         shell: pwsh
