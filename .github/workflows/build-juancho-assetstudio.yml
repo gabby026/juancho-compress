@@ -52,8 +52,11 @@ jobs:
           Invoke-WebRequest -Uri "https://nightly.link/AssetRipper/Tpk/workflows/type_tree_tpk/master/uncompressed_file.zip" -OutFile $zip
           if (Test-Path $extract) { Remove-Item $extract -Recurse -Force }
           Expand-Archive -Path $zip -DestinationPath $extract -Force
-          $tpk = Get-ChildItem $extract -Filter "classdata.tpk" -Recurse | Select-Object -First 1
-          if (-not $tpk) { throw "classdata.tpk was not found in the AssetRipper Tpk package." }
+          $tpk = Get-ChildItem $extract -Filter "*.tpk" -Recurse | Where-Object { $_.Length -gt 0 } | Select-Object -First 1
+          if (-not $tpk) {
+            $files = Get-ChildItem $extract -Recurse | Select-Object -ExpandProperty FullName
+            throw ("No .tpk file was found in the AssetRipper Tpk package. Archive contents:" + [Environment]::NewLine + ($files -join [Environment]::NewLine))
+          }
           Copy-Item $tpk.FullName "$env:GITHUB_WORKSPACE\classdata.tpk" -Force
 
       - name: Publish self-contained Windows x64
