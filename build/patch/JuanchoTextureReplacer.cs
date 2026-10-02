@@ -221,7 +221,8 @@ namespace AssetStudioGUI
                 settings.Width,
                 settings.Height,
                 mipCount,
-                useBgraInput);
+                quality: 3,
+                useBgra: useBgraInput);
 
             if (settings.GenerateMipMaps && settings.MipCount > 1 && texture.m_MipCount < settings.MipCount)
                 throw new InvalidOperationException(
