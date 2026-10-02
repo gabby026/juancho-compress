@@ -13,9 +13,17 @@ using StbColorComponents = StbImageSharp.ColorComponents;
 
 namespace AssetStudioGUI
 {
+    internal sealed class JuanchoReplacementResult
+    {
+        public int Width { get; set; }
+        public int Height { get; set; }
+        public int Format { get; set; }
+        public int MipCount { get; set; }
+    }
+
     internal static class JuanchoTextureReplacer
     {
-        public static void ReplaceTexture(AssetItem selectedAsset, string imagePath, string outputPath, JuanchoTextureSettings settings)
+        public static JuanchoReplacementResult ReplaceTexture(AssetItem selectedAsset, string imagePath, string outputPath, JuanchoTextureSettings settings)
         {
             if (selectedAsset == null) throw new ArgumentNullException(nameof(selectedAsset));
             if (selectedAsset.Type != ClassIDType.Texture2D) throw new InvalidOperationException("The selected asset is not a Texture2D.");
@@ -86,21 +94,22 @@ namespace AssetStudioGUI
                 throw new ArgumentOutOfRangeException(nameof(settings), "Wrap mode is invalid.");
         }
 
-        private static void ReplaceInAssetsFile(string sourcePath, long pathId, string assetName, string imagePath, string outputPath, JuanchoTextureSettings settings)
+        private static JuanchoReplacementResult ReplaceInAssetsFile(string sourcePath, long pathId, string assetName, string imagePath, string outputPath, JuanchoTextureSettings settings)
         {
             var manager = new ATAssetsManager();
             try
             {
                 var fileInst = manager.LoadAssetsFile(sourcePath, false);
                 if (fileInst == null) throw new InvalidOperationException("Could not load the assets file.");
-                ReplaceTextureInAssetsFile(manager, fileInst, pathId, assetName, imagePath, settings);
+                JuanchoReplacementResult result = ReplaceTextureInAssetsFile(manager, fileInst, pathId, assetName, imagePath, settings);
                 using var writer = new AssetsFileWriter(outputPath);
                 fileInst.file.Write(writer);
+                return result;
             }
             finally { manager.UnloadAll(); }
         }
 
-        private static void ReplaceInBundle(string sourcePath, long pathId, string assetName, string imagePath, string outputPath, JuanchoTextureSettings settings)
+        private static JuanchoReplacementResult ReplaceInBundle(string sourcePath, long pathId, string assetName, string imagePath, string outputPath, JuanchoTextureSettings settings)
         {
             var manager = new ATAssetsManager();
             BundleFileInstance bundle = null;
@@ -131,7 +140,7 @@ namespace AssetStudioGUI
                 if (targetFile == null || targetInfo == null)
                     throw new InvalidOperationException($"Texture2D with Path ID {pathId} was not found.");
 
-                ReplaceTextureInAssetsFile(manager, targetFile, pathId, assetName, imagePath, settings, targetInfo);
+                JuanchoReplacementResult result = ReplaceTextureInAssetsFile(manager, targetFile, pathId, assetName, imagePath, settings, targetInfo);
 
                 int directoryIndex = bundle.file.GetFileIndex(targetFile.name);
                 if (directoryIndex < 0) throw new InvalidOperationException($"Bundle entry '{targetFile.name}' was not found.");
@@ -143,6 +152,8 @@ namespace AssetStudioGUI
                     bundle.file.Write(writer);
                 else
                     bundle.file.Pack(writer, bundle.originalCompression);
+
+                return result;
             }
             finally
             {
@@ -151,7 +162,7 @@ namespace AssetStudioGUI
             }
         }
 
-        private static void ReplaceTextureInAssetsFile(
+        private static JuanchoReplacementResult ReplaceTextureInAssetsFile(
             ATAssetsManager manager,
             AssetsFileInstance fileInst,
             long pathId,
@@ -234,6 +245,88 @@ namespace AssetStudioGUI
 
             texture.WriteTo(baseField);
             info.SetNewData(baseField);
+
+            return new JuanchoReplacementResult
+            {
+                Width = texture.m_Width,
+                Height = texture.m_Height,
+                Format = texture.m_TextureFormat,
+                MipCount = texture.m_MipCount
+            };
+        }
+
+        private static void VerifyOutput(string outputPath, long pathId, string assetName, JuanchoTextureSettings settings, JuanchoReplacementResult expected)
+        {
+            var manager = new ATAssetsManager();
+            try
+            {
+                TextureFile texture = null;
+
+                if (IsUnityBundle(outputPath))
+                {
+                    BundleFileInstance bundle = manager.LoadBundleFile(outputPath, true);
+                    if (bundle == null || bundle.file == null)
+                        throw new InvalidOperationException("The saved Unity bundle could not be reopened for verification.");
+
+                    try
+                    {
+                        foreach (var directoryInfo in bundle.file.BlockAndDirInfo.DirectoryInfos)
+                        {
+                            if (!directoryInfo.IsSerialized) continue;
+                            var fileInst = manager.LoadAssetsFileFromBundle(bundle, directoryInfo.Name, false);
+                            if (fileInst == null) continue;
+                            var info = fileInst.file.GetAssetInfo(pathId);
+                            if (info == null || info.GetTypeId(fileInst.file) != (int)AssetClassID.Texture2D) continue;
+
+                            EnsureClassDatabase(manager, fileInst);
+                            var field = manager.GetBaseField(fileInst, info);
+                            string name = field["m_Name"].AsString;
+                            if (!string.IsNullOrEmpty(assetName) && !string.Equals(name, assetName, StringComparison.Ordinal)) continue;
+
+                            texture = TextureFile.ReadTextureFile(field);
+                            break;
+                        }
+                    }
+                    finally
+                    {
+                        manager.UnloadBundleFile(bundle);
+                    }
+                }
+                else
+                {
+                    var fileInst = manager.LoadAssetsFile(outputPath, false);
+                    if (fileInst == null)
+                        throw new InvalidOperationException("The saved assets file could not be reopened for verification.");
+
+                    EnsureClassDatabase(manager, fileInst);
+                    var info = fileInst.file.GetAssetInfo(pathId);
+                    if (info != null && info.GetTypeId(fileInst.file) == (int)AssetClassID.Texture2D)
+                    {
+                        var field = manager.GetBaseField(fileInst, info);
+                        string name = field["m_Name"].AsString;
+                        if (string.IsNullOrEmpty(assetName) || string.Equals(name, assetName, StringComparison.Ordinal))
+                            texture = TextureFile.ReadTextureFile(field);
+                    }
+                }
+
+                if (texture == null)
+                    throw new InvalidOperationException("The saved file does not contain the replaced Texture2D.");
+
+                if (texture.m_Width != expected.Width || texture.m_Height != expected.Height || texture.m_TextureFormat != expected.Format)
+                    throw new InvalidOperationException(
+                        $"Verification mismatch. Saved Texture2D is {texture.m_Width} × {texture.m_Height}, format {(ATTextureFormat)texture.m_TextureFormat}, " +
+                        $"but the replacement result was {expected.Width} × {expected.Height}, format {(ATTextureFormat)expected.Format}.");
+
+                if (texture.m_MipCount != expected.MipCount)
+                    throw new InvalidOperationException($"Verification mismatch. Saved mip count is {texture.m_MipCount}, expected {expected.MipCount}.");
+
+                if ((texture.pictureData == null || texture.pictureData.Length == 0) && string.IsNullOrEmpty(texture.m_StreamData.path))
+                    throw new InvalidOperationException("Verification failed because the saved Texture2D contains no embedded image data.");
+            }
+            finally
+            {
+                manager.UnloadAll();
+            }
         }
 
         private static byte[] ResizeRgbaBilinear(byte[] source, int sourceWidth, int sourceHeight, int targetWidth, int targetHeight)
