@@ -52,18 +52,17 @@ namespace AssetStudioGUI
 
             try
             {
-                if (IsUnityBundle(sourcePath))
-                    ReplaceInBundle(sourcePath, selectedAsset.m_PathID, selectedAsset.Text, imagePath, tempPath, settings);
-                else
-                    ReplaceInAssetsFile(sourcePath, selectedAsset.m_PathID, selectedAsset.Text, imagePath, tempPath, settings);
+                JuanchoReplacementResult result = IsUnityBundle(sourcePath)
+                    ? ReplaceInBundle(sourcePath, selectedAsset.m_PathID, selectedAsset.Text, imagePath, tempPath, settings)
+                    : ReplaceInAssetsFile(sourcePath, selectedAsset.m_PathID, selectedAsset.Text, imagePath, tempPath, settings);
 
                 if (!File.Exists(tempPath) || new FileInfo(tempPath).Length == 0)
                     throw new IOException("The replacement produced an empty output file.");
 
-                if (File.Exists(outputPath))
-                    File.Delete(outputPath);
+                VerifyOutput(tempPath, selectedAsset.m_PathID, selectedAsset.Text, result);
 
-                File.Move(tempPath, outputPath);
+                File.Move(tempPath, outputPath, true);
+                return result;
             }
             finally
             {
@@ -92,6 +91,15 @@ namespace AssetStudioGUI
 
             if (settings.WrapMode < 0 || settings.WrapMode > 3)
                 throw new ArgumentOutOfRangeException(nameof(settings), "Wrap mode is invalid.");
+
+            if (settings.FilterMode < 0 || settings.FilterMode > 2)
+                throw new ArgumentOutOfRangeException(nameof(settings), "Filter mode is invalid.");
+
+            var format = (ATTextureFormat)settings.Format;
+            if (!IsManagedEncodable(format) && !TextureEncoderWrapper.NativeLibrariesSupported())
+                throw new InvalidOperationException(
+                    $"The selected format {format} requires the bundled native texture encoder. " +
+                    "The encoder DLL is missing or could not be loaded.");
         }
 
         private static JuanchoReplacementResult ReplaceInAssetsFile(string sourcePath, long pathId, string assetName, string imagePath, string outputPath, JuanchoTextureSettings settings)
@@ -255,7 +263,7 @@ namespace AssetStudioGUI
             };
         }
 
-        private static void VerifyOutput(string outputPath, long pathId, string assetName, JuanchoTextureSettings settings, JuanchoReplacementResult expected)
+        private static void VerifyOutput(string outputPath, long pathId, string assetName, JuanchoReplacementResult expected)
         {
             var manager = new ATAssetsManager();
             try
@@ -289,7 +297,6 @@ namespace AssetStudioGUI
                     }
                     finally
                     {
-                        manager.UnloadBundleFile(bundle);
                     }
                 }
                 else
@@ -327,6 +334,29 @@ namespace AssetStudioGUI
             {
                 manager.UnloadAll();
             }
+        }
+
+        private static bool IsManagedEncodable(ATTextureFormat format)
+        {
+            return format == ATTextureFormat.Alpha8 ||
+                   format == ATTextureFormat.ARGB4444 ||
+                   format == ATTextureFormat.RGB24 ||
+                   format == ATTextureFormat.RGBA32 ||
+                   format == ATTextureFormat.ARGB32 ||
+                   format == ATTextureFormat.RGB565 ||
+                   format == ATTextureFormat.RGBA4444 ||
+                   format == ATTextureFormat.BGRA32 ||
+                   format == ATTextureFormat.RHalf ||
+                   format == ATTextureFormat.RGHalf ||
+                   format == ATTextureFormat.RGBAHalf ||
+                   format == ATTextureFormat.RFloat ||
+                   format == ATTextureFormat.RGFloat ||
+                   format == ATTextureFormat.RGBAFloat ||
+                   format == ATTextureFormat.RGBFloat ||
+                   format == ATTextureFormat.R16 ||
+                   format == ATTextureFormat.RG16 ||
+                   format == ATTextureFormat.R8 ||
+                   format == ATTextureFormat.BGRA32Old;
         }
 
         private static byte[] ResizeRgbaBilinear(byte[] source, int sourceWidth, int sourceHeight, int targetWidth, int targetHeight)
