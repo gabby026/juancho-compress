@@ -221,8 +221,7 @@ namespace AssetStudioGUI
                 settings.Width,
                 settings.Height,
                 (ATTextureFormat)settings.Format,
-                mipCount,
-                3);
+                mipCount);
 
             if (settings.GenerateMipMaps && settings.MipCount > 1 && texture.m_MipCount < settings.MipCount)
                 throw new InvalidOperationException(
