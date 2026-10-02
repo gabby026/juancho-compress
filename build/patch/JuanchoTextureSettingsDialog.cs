@@ -312,7 +312,7 @@ namespace AssetStudioGUI
 
             resetButton.Click += (_, _) =>
             {
-                SetDimensions(imageWidth, imageHeight);
+                SetDimensions(originalWidth, originalHeight);
                 SelectFormat(originalFormat);
                 filterBox.SelectedIndex = originalAniso > 1 ? 3 : Math.Max(0, Math.Min(2, originalFilter));
                 anisoBox.Value = Math.Max(1, Math.Min(16, originalAniso));
