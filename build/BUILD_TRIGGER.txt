@@ -1,1 +1,1 @@
-Juancho AssetStudio Windows build trigger - Texture2D replacement settings flow
+Juancho AssetStudio CI5 - verify exact AssetsTools.NET.Texture 3.0.2 API
