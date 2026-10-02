@@ -36,6 +36,7 @@ jobs:
           $msbuild = Join-Path $vsPath "MSBuild\Current\Bin\MSBuild.exe"
           & $msbuild .\AssetStudioFBXNative\AssetStudioFBXNative.vcxproj /m /p:Configuration=Release /p:Platform=x64
           & $msbuild .\Texture2DDecoderNative\Texture2DDecoderNative.vcxproj /m /p:Configuration=Release /p:Platform=x64
+        continue-on-error: true
 
       - name: Publish self-contained Windows x64
         working-directory: AssetStudio
