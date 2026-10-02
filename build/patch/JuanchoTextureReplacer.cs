@@ -55,7 +55,7 @@ namespace AssetStudioGUI
 
         private static void ReplaceInBundle(string sourcePath, long pathId, string assetName, string imagePath, string outputPath)
         {
-            var manager = new AssetsManager();
+            var manager = new ATAssetsManager();
             BundleFileInstance bundle = null;
             try
             {
@@ -126,7 +126,7 @@ namespace AssetStudioGUI
             info.SetNewData(baseField);
         }
 
-        private static void EnsureClassDatabase(AssetsManager manager, AssetsFileInstance fileInst)
+        private static void EnsureClassDatabase(ATAssetsManager manager, AssetsFileInstance fileInst)
         {
             if (fileInst.file.Metadata.TypeTreeEnabled || manager.ClassDatabase != null) return;
             string package = Path.Combine(AppContext.BaseDirectory, "classdata.tpk");
