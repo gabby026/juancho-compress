@@ -7,8 +7,11 @@ $form = Join-Path $gui 'AssetStudioGUIForm.cs'
 $designer = Join-Path $gui 'AssetStudioGUIForm.Designer.cs'
 $helperSource = Join-Path $env:GITHUB_WORKSPACE 'build\patch\JuanchoTextureReplacer.cs'
 $helperDest = Join-Path $gui 'JuanchoTextureReplacer.cs'
+$dialogSource = Join-Path $env:GITHUB_WORKSPACE 'build\patch\JuanchoTextureSettingsDialog.cs'
+$dialogDest = Join-Path $gui 'JuanchoTextureSettingsDialog.cs'
 
 Copy-Item $helperSource $helperDest -Force
+Copy-Item $dialogSource $dialogDest -Force
 
 $projText = Get-Content $csproj -Raw
 $projText = $projText.Replace('<TargetFrameworks>net472;net5.0-windows;net6.0-windows</TargetFrameworks>', '<TargetFrameworks>net8.0-windows</TargetFrameworks>')
@@ -47,8 +50,8 @@ if ($designerText -notmatch 'juanchoToolStripMenuItem') {
 "            // replaceSelectedTextureToolStripMenuItem" + [Environment]::NewLine +
 "            // " + [Environment]::NewLine +
 "            this.replaceSelectedTextureToolStripMenuItem.Name = ""replaceSelectedTextureToolStripMenuItem"";" + [Environment]::NewLine +
-"            this.replaceSelectedTextureToolStripMenuItem.Size = new System.Drawing.Size(210, 22);" + [Environment]::NewLine +
-"            this.replaceSelectedTextureToolStripMenuItem.Text = ""Replace selected texture"";" + [Environment]::NewLine +
+"            this.replaceSelectedTextureToolStripMenuItem.Size = new System.Drawing.Size(230, 22);" + [Environment]::NewLine +
+"            this.replaceSelectedTextureToolStripMenuItem.Text = ""Replace Selected Texture2D"";" + [Environment]::NewLine +
 "            this.replaceSelectedTextureToolStripMenuItem.Click += new System.EventHandler(this.replaceSelectedTextureToolStripMenuItem_Click);" + [Environment]::NewLine +
 "            // " + [Environment]::NewLine +
 "            // optionsToolStripMenuItem"
@@ -74,13 +77,25 @@ if ($formText -notmatch 'replaceSelectedTextureToolStripMenuItem_Click') {
 "                MessageBox.Show(this, ""Select exactly one Texture2D in the asset list first."", ""Juancho"", MessageBoxButtons.OK, MessageBoxIcon.Information);" + $nl +
 "                return;" + $nl +
 "            }" + $nl + $nl +
-"            AssetItem selectedAsset = selectedAssets[0];" + $nl + $nl +
+"            AssetItem selectedAsset = selectedAssets[0];" + $nl +
+"            var sourceTexture = selectedAsset.Asset as Texture2D;" + $nl +
+"            if (sourceTexture == null)" + $nl +
+"            {" + $nl +
+"                MessageBox.Show(this, ""The selected Texture2D data is not loaded yet."", ""Juancho"", MessageBoxButtons.OK, MessageBoxIcon.Warning);" + $nl +
+"                return;" + $nl +
+"            }" + $nl + $nl +
 "            using (var imageDialog = new OpenFileDialog())" + $nl +
 "            {" + $nl +
 "                imageDialog.Title = ""Choose replacement texture"";" + $nl +
 "                imageDialog.Filter = ""Image files|*.png;*.jpg;*.jpeg;*.bmp;*.tga|PNG|*.png|JPEG|*.jpg;*.jpeg|Bitmap|*.bmp|TGA|*.tga|All files|*.*"";" + $nl +
 "                imageDialog.RestoreDirectory = true;" + $nl +
 "                if (imageDialog.ShowDialog(this) != DialogResult.OK) return;" + $nl + $nl +
+"                JuanchoTextureSettings settings;" + $nl +
+"                using (var settingsDialog = new JuanchoTextureSettingsDialog(selectedAsset.Text, imageDialog.FileName, sourceTexture))" + $nl +
+"                {" + $nl +
+"                    if (settingsDialog.ShowDialog(this) != DialogResult.OK) return;" + $nl +
+"                    settings = settingsDialog.Settings;" + $nl +
+"                }" + $nl + $nl +
 "                string sourcePath = string.IsNullOrWhiteSpace(selectedAsset.SourceFile.originalPath) ? selectedAsset.SourceFile.fullName : selectedAsset.SourceFile.originalPath;" + $nl +
 "                string extension = Path.GetExtension(sourcePath);" + $nl +
 "                if (string.IsNullOrEmpty(extension)) extension = "".unity3d"";" + $nl + $nl +
@@ -96,7 +111,7 @@ if ($formText -notmatch 'replaceSelectedTextureToolStripMenuItem_Click') {
 "                    StatusStripUpdate(""Juancho: replacing selected Texture2D..."");" + $nl +
 "                    try" + $nl +
 "                    {" + $nl +
-"                        await Task.Run(() => JuanchoTextureReplacer.ReplaceTexture(selectedAsset, imageDialog.FileName, saveDialog.FileName));" + $nl +
+"                        await Task.Run(() => JuanchoTextureReplacer.ReplaceTexture(selectedAsset, imageDialog.FileName, saveDialog.FileName, settings));" + $nl +
 "                        StatusStripUpdate(""Juancho: Texture2D replacement finished."");" + $nl +
 "                        MessageBox.Show(this, ""Texture2D replaced successfully."" + Environment.NewLine + Environment.NewLine + ""Saved file:"" + Environment.NewLine + saveDialog.FileName, ""Juancho"", MessageBoxButtons.OK, MessageBoxIcon.Information);" + $nl +
 "                    }" + $nl +
