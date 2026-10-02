@@ -41,7 +41,7 @@ jobs:
       - name: Publish self-contained Windows x64
         working-directory: AssetStudio
         shell: pwsh
-        run: dotnet publish .\AssetStudioGUI\AssetStudioGUI.csproj -c Release -f net6.0-windows -r win-x64 --self-contained true -p:PublishSingleFile=false -p:IncludeNativeLibrariesForSelfExtract=false -o "$env:GITHUB_WORKSPACE\publish"
+        run: dotnet publish .\AssetStudioGUI\AssetStudioGUI.csproj -c Release -f net8.0-windows -r win-x64 --self-contained true -p:PublishSingleFile=false -p:IncludeNativeLibrariesForSelfExtract=false -o "$env:GITHUB_WORKSPACE\publish"
 
       - name: Package
         shell: pwsh
