@@ -1,6 +1,7 @@
 ﻿using AssetStudio;
 using AssetsTools.NET;
 using AssetsTools.NET.Extra;
+using ATAssetsManager = AssetsTools.NET.Extra.AssetsManager;
 using AssetsTools.NET.Texture;
 using System;
 using System.IO;
@@ -40,7 +41,7 @@ namespace AssetStudioGUI
 
         private static void ReplaceInAssetsFile(string sourcePath, long pathId, string assetName, string imagePath, string outputPath)
         {
-            var manager = new AssetsManager();
+            var manager = new ATAssetsManager();
             try
             {
                 var fileInst = manager.LoadAssetsFile(sourcePath, false);
@@ -97,7 +98,7 @@ namespace AssetStudioGUI
         }
 
         private static void ReplaceTextureInAssetsFile(
-            AssetsManager manager,
+            ATAssetsManager manager,
             AssetsFileInstance fileInst,
             long pathId,
             string assetName,
