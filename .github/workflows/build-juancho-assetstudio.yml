@@ -1,0 +1,81 @@
+name: Build Juancho AssetStudio
+
+on:
+  push:
+    branches:
+      - build/juancho-assetstudio
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout build files
+        uses: actions/checkout@v4
+
+      - name: Clone AssetStudio upstream
+        shell: pwsh
+        run: git clone --depth 1 https://github.com/perfare/AssetStudio.git "$env:GITHUB_WORKSPACE\AssetStudio"
+
+      - name: Apply Juancho Texture2D feature
+        shell: pwsh
+        run: '& "$env:GITHUB_WORKSPACE\build\patch.ps1"'
+
+      - name: Restore
+        working-directory: AssetStudio
+        shell: pwsh
+        run: dotnet restore .\AssetStudioGUI\AssetStudioGUI.csproj
+
+      - name: Build native helpers
+        working-directory: AssetStudio
+        shell: pwsh
+        run: |
+          $vswhere = (Get-Item 'Env:ProgramFiles(x86)').Value + '\Microsoft Visual Studio\Installer\vswhere.exe'
+          $vsPath = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild -property installationPath
+          if (-not $vsPath) { throw "Visual Studio MSBuild was not found." }
+          $msbuild = Join-Path $vsPath "MSBuild\Current\Bin\MSBuild.exe"
+          & $msbuild .\Texture2DDecoderNative\Texture2DDecoderNative.vcxproj /m /p:Configuration=Release /p:Platform=x64
+        continue-on-error: true
+
+      - name: Publish self-contained Windows x64
+        working-directory: AssetStudio
+        shell: pwsh
+        run: dotnet publish .\AssetStudioGUI\AssetStudioGUI.csproj -c Release -f net8.0-windows -r win-x64 --self-contained true -p:PublishSingleFile=false -p:IncludeNativeLibrariesForSelfExtract=false -o "$env:GITHUB_WORKSPACE\publish"
+
+      - name: Copy native AssetStudio helpers
+        shell: pwsh
+        working-directory: AssetStudio
+        run: |
+          New-Item -ItemType Directory -Force "$env:GITHUB_WORKSPACE\publish\x64" | Out-Null
+          Copy-Item ".\Texture2DDecoderNative\bin\x64\Release\Texture2DDecoderNative.dll" "$env:GITHUB_WORKSPACE\publish\x64\Texture2DDecoderNative.dll" -Force
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $readme = @'
+          Juancho AssetStudio
+          
+          Open AssetStudioGUI.exe.
+          
+          Usage:
+          1. Load your Unity .unity3d / assets file.
+          2. Select exactly one Texture2D.
+          3. Open Juancho -> Replace selected texture.
+          4. Select PNG/JPG/BMP/TGA.
+          5. Save the modified Unity file.
+          
+          The original source file is not overwritten.
+          '@
+          Set-Content "$env:GITHUB_WORKSPACE\publish\README-Juancho.txt" $readme -Encoding UTF8
+          Compress-Archive -Path "$env:GITHUB_WORKSPACE\publish\*" -DestinationPath "$env:GITHUB_WORKSPACE\Juancho-AssetStudio-Windows-x64.zip" -Force
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: Juancho-AssetStudio-Windows-x64
+          path: Juancho-AssetStudio-Windows-x64.zip
+          if-no-files-found: error
