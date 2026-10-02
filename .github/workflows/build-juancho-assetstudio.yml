@@ -33,7 +33,7 @@ jobs:
         shell: pwsh
         run: dotnet restore .\AssetStudioGUI\AssetStudioGUI.csproj
 
-      - name: Build native helpers
+      - name: Build native AssetStudio decoder
         working-directory: AssetStudio
         shell: pwsh
         run: |
@@ -42,7 +42,17 @@ jobs:
           if (-not $vsPath) { throw "Visual Studio MSBuild was not found." }
           $msbuild = Join-Path $vsPath "MSBuild\Current\Bin\MSBuild.exe"
           & $msbuild .\Texture2DDecoderNative\Texture2DDecoderNative.vcxproj /m /p:Configuration=Release /p:Platform=x64
-        continue-on-error: true
+
+      - name: Clone AssetsTools.NET native texture encoder
+        shell: pwsh
+        run: git clone --depth 1 https://github.com/nesrak1/AssetsTools.NET.git "$env:GITHUB_WORKSPACE\AssetsToolsNative"
+
+      - name: Build native texture encoder
+        working-directory: AssetsToolsNative
+        shell: pwsh
+        run: |
+          cmake --preset x64-release
+          cmake --build out\build\x64-release --config Release
 
       - name: Fetch classdata.tpk
         shell: pwsh
