@@ -1,1 +1,1 @@
-Juancho AssetStudio Windows build trigger - Texture2D replacement settings flow
+Juancho AssetStudio final CI verification - Texture2D replacement settings, native encoder, TypeTree, atomic save, read-back verification
