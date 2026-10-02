@@ -11,6 +11,7 @@ $helperDest = Join-Path $gui 'JuanchoTextureReplacer.cs'
 Copy-Item $helperSource $helperDest -Force
 
 $projText = Get-Content $csproj -Raw
+$projText = $projText.Replace('<TargetFrameworks>net472;net5.0-windows;net6.0-windows</TargetFrameworks>', '<TargetFrameworks>net8.0-windows</TargetFrameworks>')
 if ($projText -notmatch 'AssetsTools\.NET"') {
     $tab = [char]9
     $marker = $tab + $tab + '<PackageReference Include="Newtonsoft.Json" Version="13.0.1" />'
