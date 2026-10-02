@@ -1,5 +1,6 @@
 using AssetStudio;
 using AssetsTools.NET.Texture;
+using ATTextureFormat = AssetsTools.NET.Texture.ATTextureFormat;
 using StbImageSharp;
 using System;
 using System.Drawing;
@@ -27,21 +28,21 @@ namespace AssetStudioGUI
 
     internal sealed class JuanchoTextureFormatItem
     {
-        public TextureFormat Format { get; }
-        public JuanchoTextureFormatItem(TextureFormat format) => Format = format;
+        public ATTextureFormat Format { get; }
+        public JuanchoTextureFormatItem(ATTextureFormat format) => Format = format;
 
         public override string ToString()
         {
             return Format switch
             {
-                TextureFormat.DXT1 or TextureFormat.DXT3 or TextureFormat.DXT5 => $"{Format} (DXT)",
-                TextureFormat.ETC_RGB4 or TextureFormat.ETC2_RGB4 or TextureFormat.ETC2_RGBA1 or TextureFormat.ETC2_RGBA8 => $"{Format} (ETC)",
-                TextureFormat.ASTC_RGB_4x4 or TextureFormat.ASTC_RGB_5x5 or TextureFormat.ASTC_RGB_6x6 or
-                TextureFormat.ASTC_RGB_8x8 or TextureFormat.ASTC_RGB_10x10 or TextureFormat.ASTC_RGB_12x12 or
-                TextureFormat.ASTC_RGBA_4x4 or TextureFormat.ASTC_RGBA_5x5 or TextureFormat.ASTC_RGBA_6x6 or
-                TextureFormat.ASTC_RGBA_8x8 or TextureFormat.ASTC_RGBA_10x10 or TextureFormat.ASTC_RGBA_12x12 => $"{Format} (ASTC)",
-                TextureFormat.PVRTC_RGB2 or TextureFormat.PVRTC_RGBA2 or TextureFormat.PVRTC_RGB4 or TextureFormat.PVRTC_RGBA4 => $"{Format} (PVRTC)",
-                TextureFormat.BC4 or TextureFormat.BC5 or TextureFormat.BC6H or TextureFormat.BC7 => $"{Format} (BC)",
+                ATTextureFormat.DXT1 or ATTextureFormat.DXT3 or ATTextureFormat.DXT5 => $"{Format} (DXT)",
+                ATTextureFormat.ETC_RGB4 or ATTextureFormat.ETC2_RGB4 or ATTextureFormat.ETC2_RGBA1 or ATTextureFormat.ETC2_RGBA8 => $"{Format} (ETC)",
+                ATTextureFormat.ASTC_RGB_4x4 or ATTextureFormat.ASTC_RGB_5x5 or ATTextureFormat.ASTC_RGB_6x6 or
+                ATTextureFormat.ASTC_RGB_8x8 or ATTextureFormat.ASTC_RGB_10x10 or ATTextureFormat.ASTC_RGB_12x12 or
+                ATTextureFormat.ASTC_RGBA_4x4 or ATTextureFormat.ASTC_RGBA_5x5 or ATTextureFormat.ASTC_RGBA_6x6 or
+                ATTextureFormat.ASTC_RGBA_8x8 or ATTextureFormat.ASTC_RGBA_10x10 or ATTextureFormat.ASTC_RGBA_12x12 => $"{Format} (ASTC)",
+                ATTextureFormat.PVRTC_RGB2 or ATTextureFormat.PVRTC_RGBA2 or ATTextureFormat.PVRTC_RGB4 or ATTextureFormat.PVRTC_RGBA4 => $"{Format} (PVRTC)",
+                ATTextureFormat.BC4 or ATTextureFormat.BC5 or ATTextureFormat.BC6H or ATTextureFormat.BC7 => $"{Format} (BC)",
                 _ => Format.ToString()
             };
         }
@@ -102,7 +103,7 @@ namespace AssetStudioGUI
 
             int originalWidth = sourceTexture?.m_Width > 0 ? sourceTexture.m_Width : imageWidth;
             int originalHeight = sourceTexture?.m_Height > 0 ? sourceTexture.m_Height : imageHeight;
-            int originalFormat = sourceTexture?.m_TextureFormat ?? (int)TextureFormat.RGBA32;
+            int originalFormat = sourceTexture?.m_TextureFormat ?? (int)ATTextureFormat.RGBA32;
             int originalFilter = sourceTexture?.m_TextureSettings.m_FilterMode ?? 1;
             int originalAniso = sourceTexture?.m_TextureSettings.m_Aniso ?? 1;
             float originalMipBias = sourceTexture?.m_TextureSettings.m_MipBias ?? 0f;
@@ -191,13 +192,13 @@ namespace AssetStudioGUI
             AddFullRow(settingsPanel, sizeButtons, 42);
 
             formatBox = CreateCombo();
-            foreach (TextureFormat format in Enum.GetValues<TextureFormat>().Distinct())
+            foreach (ATTextureFormat format in Enum.GetValues<ATTextureFormat>().Distinct())
                 formatBox.Items.Add(new JuanchoTextureFormatItem(format));
 
             var selectedItem = formatBox.Items.Cast<JuanchoTextureFormatItem>()
                 .FirstOrDefault(x => (int)x.Format == originalFormat);
             formatBox.SelectedItem = selectedItem ?? formatBox.Items.Cast<JuanchoTextureFormatItem>()
-                .First(x => x.Format == TextureFormat.RGBA32);
+                .First(x => x.Format == ATTextureFormat.RGBA32);
             AddRow(settingsPanel, "Format", out formatBox);
 
             formatNoteLabel = new Label
@@ -340,10 +341,10 @@ namespace AssetStudioGUI
                     return;
                 }
 
-                if (selectedFormat.Format == TextureFormat.PVRTC_RGB2 ||
-                    selectedFormat.Format == TextureFormat.PVRTC_RGBA2 ||
-                    selectedFormat.Format == TextureFormat.PVRTC_RGB4 ||
-                    selectedFormat.Format == TextureFormat.PVRTC_RGBA4)
+                if (selectedFormat.Format == ATTextureFormat.PVRTC_RGB2 ||
+                    selectedFormat.Format == ATTextureFormat.PVRTC_RGBA2 ||
+                    selectedFormat.Format == ATTextureFormat.PVRTC_RGB4 ||
+                    selectedFormat.Format == ATTextureFormat.PVRTC_RGBA4)
                 {
                     if ((width & 3) != 0 || (height & 3) != 0)
                     {
@@ -477,7 +478,7 @@ namespace AssetStudioGUI
 
             for (int i = 0; i < formatBox.Items.Count; i++)
             {
-                if (formatBox.Items[i] is JuanchoTextureFormatItem item && item.Format == TextureFormat.RGBA32)
+                if (formatBox.Items[i] is JuanchoTextureFormatItem item && item.Format == ATTextureFormat.RGBA32)
                 {
                     formatBox.SelectedIndex = i;
                     return;
@@ -487,7 +488,7 @@ namespace AssetStudioGUI
 
         private static bool UsesBgraByDefault(int format)
         {
-            return format == (int)TextureFormat.BGRA32 || format == (int)TextureFormat.BGRA32Old;
+            return format == (int)ATTextureFormat.BGRA32 || format == (int)ATTextureFormat.BGRA32Old;
         }
 
         private static void AddRow(TableLayoutPanel panel, string label, out NumericUpDown control, NumericUpDown value)
