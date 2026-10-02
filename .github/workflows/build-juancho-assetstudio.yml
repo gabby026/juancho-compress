@@ -34,7 +34,6 @@ jobs:
           $vsPath = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild -property installationPath
           if (-not $vsPath) { throw "Visual Studio MSBuild was not found." }
           $msbuild = Join-Path $vsPath "MSBuild\Current\Bin\MSBuild.exe"
-          & $msbuild .\AssetStudioFBXNative\AssetStudioFBXNative.vcxproj /m /p:Configuration=Release /p:Platform=x64
           & $msbuild .\Texture2DDecoderNative\Texture2DDecoderNative.vcxproj /m /p:Configuration=Release /p:Platform=x64
         continue-on-error: true
 
@@ -48,7 +47,6 @@ jobs:
         working-directory: AssetStudio
         run: |
           New-Item -ItemType Directory -Force "$env:GITHUB_WORKSPACE\publish\x64" | Out-Null
-          Copy-Item ".\AssetStudioFBXNative\bin\x64\Release\AssetStudioFBXNative.dll" "$env:GITHUB_WORKSPACE\publish\x64\AssetStudioFBXNative.dll" -Force
           Copy-Item ".\Texture2DDecoderNative\bin\x64\Release\Texture2DDecoderNative.dll" "$env:GITHUB_WORKSPACE\publish\x64\Texture2DDecoderNative.dll" -Force
 
       - name: Package
