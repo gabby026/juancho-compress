@@ -1,1 +1,1 @@
-Juancho AssetStudio Windows build trigger - Texture2D replacement settings flow
+Juancho AssetStudio CI2 - verify Visual Studio environment and native texture encoder
