@@ -69,18 +69,6 @@ jobs:
           }
           Copy-Item $tpk.FullName "$env:GITHUB_WORKSPACE\classdata.tpk" -Force
 
-      - name: Fetch latest TypeTree package
-        shell: pwsh
-        run: |
-          $zip = "$env:RUNNER_TEMP\classdata.zip"
-          $dir = "$env:RUNNER_TEMP\classdata"
-          Invoke-WebRequest -UseBasicParsing "https://nightly.link/AssetRipper/Tpk/workflows/type_tree_tpk/master/uncompressed_file.zip" -OutFile $zip
-          if (Test-Path $dir) { Remove-Item $dir -Recurse -Force }
-          Expand-Archive $zip -DestinationPath $dir -Force
-          $tpk = Get-ChildItem $dir -Recurse -Filter *.tpk | Select-Object -First 1
-          if (-not $tpk) { throw "Could not find classdata.tpk in the downloaded TypeTree package." }
-          Copy-Item $tpk.FullName "$env:GITHUB_WORKSPACE\classdata.tpk" -Force
-
       - name: Publish self-contained Windows x64
         working-directory: AssetStudio
         shell: pwsh
@@ -93,6 +81,11 @@ jobs:
           New-Item -ItemType Directory -Force "$env:GITHUB_WORKSPACE\publish\x64" | Out-Null
           if (-not (Test-Path ".\Texture2DDecoderNative\bin\x64\Release\Texture2DDecoderNative.dll")) { throw "Texture2DDecoderNative.dll was not built." }
           Copy-Item ".\Texture2DDecoderNative\bin\x64\Release\Texture2DDecoderNative.dll" "$env:GITHUB_WORKSPACE\publish\x64\Texture2DDecoderNative.dll" -Force
+          $encoderDir = "$env:GITHUB_WORKSPACE\AssetsToolsNative\out\build\x64-release"
+          if (-not (Test-Path "$encoderDir\textureencoder.dll")) { throw "textureencoder.dll was not built." }
+          if (-not (Test-Path "$encoderDir\cuttlefish.dll")) { throw "cuttlefish.dll was not built." }
+          Copy-Item "$encoderDir\textureencoder.dll" "$env:GITHUB_WORKSPACE\publish\textureencoder.dll" -Force
+          Copy-Item "$encoderDir\cuttlefish.dll" "$env:GITHUB_WORKSPACE\publish\cuttlefish.dll" -Force
           Copy-Item "$env:GITHUB_WORKSPACE\classdata.tpk" "$env:GITHUB_WORKSPACE\publish\classdata.tpk" -Force
 
       - name: Package
