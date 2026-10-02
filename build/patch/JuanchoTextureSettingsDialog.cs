@@ -1,6 +1,6 @@
 using AssetStudio;
 using AssetsTools.NET.Texture;
-using ATTextureFormat = AssetsTools.NET.Texture.ATTextureFormat;
+using ATTextureFormat = AssetsTools.NET.Texture.TextureFormat;
 using StbImageSharp;
 using System;
 using System.Drawing;
