@@ -1,5 +1,4 @@
 using AssetStudio;
-using AssetsTools.NET.Texture;
 using ATTextureFormat = AssetsTools.NET.Texture.TextureFormat;
 using StbImageSharp;
 using System;
@@ -103,7 +102,7 @@ namespace AssetStudioGUI
 
             int originalWidth = sourceTexture?.m_Width > 0 ? sourceTexture.m_Width : imageWidth;
             int originalHeight = sourceTexture?.m_Height > 0 ? sourceTexture.m_Height : imageHeight;
-            int originalFormat = sourceTexture?.m_TextureFormat ?? (int)ATTextureFormat.RGBA32;
+            int originalFormat = sourceTexture != null ? (int)sourceTexture.m_TextureFormat : (int)ATTextureFormat.RGBA32;
             int originalFilter = sourceTexture?.m_TextureSettings.m_FilterMode ?? 1;
             int originalAniso = sourceTexture?.m_TextureSettings.m_Aniso ?? 1;
             float originalMipBias = sourceTexture?.m_TextureSettings.m_MipBias ?? 0f;
@@ -160,7 +159,7 @@ namespace AssetStudioGUI
                 Dock = DockStyle.Fill,
                 AutoEllipsis = true,
                 Text = $"Texture2D: {textureName}",
-                Font = new Font(Font, FontStyle.Bold),
+                Font = new System.Drawing.Font(Font, FontStyle.Bold),
                 Padding = new Padding(0, 0, 0, 4)
             };
             AddFullRow(settingsPanel, title, 52);
@@ -174,8 +173,10 @@ namespace AssetStudioGUI
             };
             AddFullRow(settingsPanel, sourceInfoLabel, 48);
 
-            AddRow(settingsPanel, "Width", out widthBox, CreateNumber(1, 65536, imageWidth));
-            AddRow(settingsPanel, "Height", out heightBox, CreateNumber(1, 65536, imageHeight));
+            widthBox = CreateNumber(1, 65536, imageWidth);
+            AddRow(settingsPanel, "Width", widthBox);
+            heightBox = CreateNumber(1, 65536, imageHeight);
+            AddRow(settingsPanel, "Height", heightBox);
 
             var sizeButtons = new FlowLayoutPanel
             {
@@ -199,7 +200,7 @@ namespace AssetStudioGUI
                 .FirstOrDefault(x => (int)x.Format == originalFormat);
             formatBox.SelectedItem = selectedItem ?? formatBox.Items.Cast<JuanchoTextureFormatItem>()
                 .First(x => x.Format == ATTextureFormat.RGBA32);
-            AddRow(settingsPanel, "Format", out formatBox);
+            AddRow(settingsPanel, "Format", formatBox);
 
             formatNoteLabel = new Label
             {
@@ -220,10 +221,10 @@ namespace AssetStudioGUI
                 ? 3
                 : Math.Max(0, Math.Min(2, originalFilter));
             filterBox.SelectedIndex = filterIndex;
-            AddRow(settingsPanel, "Filter Mode", out filterBox);
+            AddRow(settingsPanel, "Filter Mode", filterBox);
 
             anisoBox = CreateNumber(1, 16, originalAniso);
-            AddRow(settingsPanel, "Anisotropic Level", out anisoBox);
+            AddRow(settingsPanel, "Anisotropic Level", anisoBox);
 
             mipBiasBox = new NumericUpDown
             {
@@ -235,7 +236,7 @@ namespace AssetStudioGUI
                 Increment = 0.05m,
                 Value = (decimal)Math.Max(-16, Math.Min(16, originalMipBias))
             };
-            AddRow(settingsPanel, "Mip Map Bias", out mipBiasBox);
+            AddRow(settingsPanel, "Mip Map Bias", mipBiasBox);
 
             wrapBox = CreateCombo();
             wrapBox.Items.Add("Repeat");
@@ -243,7 +244,7 @@ namespace AssetStudioGUI
             wrapBox.Items.Add("Mirror");
             wrapBox.Items.Add("Mirror Once");
             wrapBox.SelectedIndex = Math.Max(0, Math.Min(3, originalWrap));
-            AddRow(settingsPanel, "Wrap Mode", out wrapBox);
+            AddRow(settingsPanel, "Wrap Mode", wrapBox);
 
             mipMapsBox = new CheckBox
             {
@@ -251,16 +252,16 @@ namespace AssetStudioGUI
                 AutoSize = true,
                 Checked = originalMipMaps
             };
-            AddRow(settingsPanel, "Mip Maps", out mipMapsBox);
+            AddRow(settingsPanel, "Mip Maps", mipMapsBox);
 
             mipCountBox = CreateNumber(1, 32, originalMipCount);
-            AddRow(settingsPanel, "Mip Count", out mipCountBox);
+            AddRow(settingsPanel, "Mip Count", mipCountBox);
 
             channelBox = CreateCombo();
             channelBox.Items.Add("RGBA");
             channelBox.Items.Add("BGRA");
             channelBox.SelectedIndex = UsesBgraByDefault(originalFormat) ? 1 : 0;
-            AddRow(settingsPanel, "Channel", out channelBox);
+            AddRow(settingsPanel, "Channel", channelBox);
 
             var hint = new Label
             {
@@ -491,27 +492,8 @@ namespace AssetStudioGUI
             return format == (int)ATTextureFormat.BGRA32 || format == (int)ATTextureFormat.BGRA32Old;
         }
 
-        private static void AddRow(TableLayoutPanel panel, string label, out NumericUpDown control, NumericUpDown value)
+        private static void AddRow(TableLayoutPanel panel, string label, Control control)
         {
-            control = value;
-            int row = panel.RowCount++;
-            panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 36f));
-            panel.Controls.Add(LabelFor(label), 0, row);
-            panel.Controls.Add(control, 1, row);
-        }
-
-        private static void AddRow(TableLayoutPanel panel, string label, out ComboBox control, ComboBox value)
-        {
-            control = value;
-            int row = panel.RowCount++;
-            panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 36f));
-            panel.Controls.Add(LabelFor(label), 0, row);
-            panel.Controls.Add(control, 1, row);
-        }
-
-        private static void AddRow(TableLayoutPanel panel, string label, out CheckBox control, CheckBox value)
-        {
-            control = value;
             int row = panel.RowCount++;
             panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 36f));
             panel.Controls.Add(LabelFor(label), 0, row);
