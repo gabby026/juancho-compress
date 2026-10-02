@@ -143,12 +143,11 @@ namespace AssetStudioGUI
             }
 
             byte[] resizedData = ResizeRgba(rgbaData, sourceWidth, sourceHeight, settings.Width, settings.Height);
-            if (settings.UseBgra)
-                SwapRedBlueInplace(resizedData);
 
             int mipCount = settings.GenerateMipMaps ? Math.Max(1, settings.MipCount) : 1;
-            bool useBgraForEncoder = settings.UseBgra && IsRawChannelFormat((ATTextureFormat)settings.Format);
-            if (useBgraForEncoder && (ATTextureFormat)settings.Format != ATTextureFormat.BGRA32)
+            ATTextureFormat selectedFormat = (ATTextureFormat)settings.Format;
+            bool useBgraForEncoder = settings.UseBgra && selectedFormat == ATTextureFormat.BGRA32;
+            if (useBgraForEncoder)
                 SwapRedBlueInplace(resizedData);
 
             texture.EncodeTextureRaw(
