@@ -30,7 +30,7 @@ jobs:
         working-directory: AssetStudio
         shell: pwsh
         run: |
-          $vswhere = "$env:ProgramFiles(x86)\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vswhere = (Get-Item 'Env:ProgramFiles(x86)').Value + '\Microsoft Visual Studio\Installer\vswhere.exe'
           $vsPath = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild -property installationPath
           if (-not $vsPath) { throw "Visual Studio MSBuild was not found." }
           $msbuild = Join-Path $vsPath "MSBuild\Current\Bin\MSBuild.exe"
