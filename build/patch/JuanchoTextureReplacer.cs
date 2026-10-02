@@ -240,7 +240,6 @@ namespace AssetStudioGUI
                 settings.Width,
                 settings.Height,
                 mipCount,
-                3,
                 useBgraInput);
 
             if (settings.GenerateMipMaps && settings.MipCount > 1 && texture.m_MipCount < settings.MipCount)
