@@ -44,6 +44,18 @@ jobs:
           & $msbuild .\Texture2DDecoderNative\Texture2DDecoderNative.vcxproj /m /p:Configuration=Release /p:Platform=x64
         continue-on-error: true
 
+      - name: Fetch classdata.tpk
+        shell: pwsh
+        run: |
+          $zip = "$env:GITHUB_WORKSPACE\classdata.zip"
+          $extract = "$env:GITHUB_WORKSPACE\classdata"
+          Invoke-WebRequest -Uri "https://nightly.link/AssetRipper/Tpk/workflows/type_tree_tpk/master/uncompressed_file.zip" -OutFile $zip
+          if (Test-Path $extract) { Remove-Item $extract -Recurse -Force }
+          Expand-Archive -Path $zip -DestinationPath $extract -Force
+          $tpk = Get-ChildItem $extract -Filter "classdata.tpk" -Recurse | Select-Object -First 1
+          if (-not $tpk) { throw "classdata.tpk was not found in the AssetRipper Tpk package." }
+          Copy-Item $tpk.FullName "$env:GITHUB_WORKSPACE\classdata.tpk" -Force
+
       - name: Publish self-contained Windows x64
         working-directory: AssetStudio
         shell: pwsh
@@ -54,7 +66,9 @@ jobs:
         working-directory: AssetStudio
         run: |
           New-Item -ItemType Directory -Force "$env:GITHUB_WORKSPACE\publish\x64" | Out-Null
+          if (-not (Test-Path ".\Texture2DDecoderNative\bin\x64\Release\Texture2DDecoderNative.dll")) { throw "Texture2DDecoderNative.dll was not built." }
           Copy-Item ".\Texture2DDecoderNative\bin\x64\Release\Texture2DDecoderNative.dll" "$env:GITHUB_WORKSPACE\publish\x64\Texture2DDecoderNative.dll" -Force
+          Copy-Item "$env:GITHUB_WORKSPACE\classdata.tpk" "$env:GITHUB_WORKSPACE\publish\classdata.tpk" -Force
 
       - name: Package
         shell: pwsh
