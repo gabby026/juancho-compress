@@ -78,12 +78,12 @@ namespace AssetStudioGUI
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 2,
-                RowCount = 11,
+                RowCount = 12,
                 AutoSize = false
             };
             root.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 155f));
             root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
-            for (int i = 0; i < 9; i++) root.RowStyles.Add(new RowStyle(SizeType.Absolute, 36f));
+            for (int i = 0; i < 10; i++) root.RowStyles.Add(new RowStyle(SizeType.Absolute, 36f));
             root.RowStyles.Add(new RowStyle(SizeType.Absolute, 60f));
             root.RowStyles.Add(new RowStyle(SizeType.Absolute, 45f));
 
@@ -192,7 +192,6 @@ namespace AssetStudioGUI
             buttons.Controls.Add(cancelButton);
             root.Controls.Add(buttons, 0, 11);
             root.SetColumnSpan(buttons, 2);
-            root.RowCount = 12;
             root.RowStyles.Add(new RowStyle(SizeType.Absolute, 42f));
 
             saveButton.Click += (_, _) =>
