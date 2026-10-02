@@ -1,5 +1,8 @@
 name: Build Juancho AssetStudio
 
+permissions:
+  contents: write
+
 on:
   push:
     branches:
@@ -79,3 +82,15 @@ jobs:
           name: Juancho-AssetStudio-Windows-x64
           path: Juancho-AssetStudio-Windows-x64.zip
           if-no-files-found: error
+
+      - name: Publish latest package
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "juancho-latest"
+          gh release view $tag --repo "${{ github.repository }}" *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag --repo "${{ github.repository }}" --target "${{ github.sha }}" --title "Juancho AssetStudio latest" --notes "Latest Windows x64 build."
+          }
+          gh release upload $tag "$env:GITHUB_WORKSPACE\Juancho-AssetStudio-Windows-x64.zip" --repo "${{ github.repository }}" --clobber
