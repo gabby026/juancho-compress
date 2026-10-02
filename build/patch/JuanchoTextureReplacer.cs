@@ -6,6 +6,7 @@ using AssetsTools.NET.Texture;
 using StbImageSharp;
 using System;
 using System.IO;
+using System.Linq;
 using System.Text;
 using ATTextureFormat = AssetsTools.NET.Texture.TextureFormat;
 using StbColorComponents = StbImageSharp.ColorComponents;
@@ -22,6 +23,8 @@ namespace AssetStudioGUI
             if (string.IsNullOrWhiteSpace(outputPath)) throw new ArgumentException("Output path is required.", nameof(outputPath));
             if (settings == null) throw new ArgumentNullException(nameof(settings));
 
+            ValidateSettings(settings);
+
             string sourcePath = string.IsNullOrWhiteSpace(selectedAsset.SourceFile.originalPath)
                 ? selectedAsset.SourceFile.fullName
                 : selectedAsset.SourceFile.originalPath;
@@ -36,10 +39,51 @@ namespace AssetStudioGUI
             string outputDirectory = Path.GetDirectoryName(outputPath);
             if (!string.IsNullOrEmpty(outputDirectory)) Directory.CreateDirectory(outputDirectory);
 
-            if (IsUnityBundle(sourcePath))
-                ReplaceInBundle(sourcePath, selectedAsset.m_PathID, selectedAsset.Text, imagePath, outputPath, settings);
-            else
-                ReplaceInAssetsFile(sourcePath, selectedAsset.m_PathID, selectedAsset.Text, imagePath, outputPath, settings);
+            string tempPath = outputPath + ".juancho.tmp";
+            if (File.Exists(tempPath)) File.Delete(tempPath);
+
+            try
+            {
+                if (IsUnityBundle(sourcePath))
+                    ReplaceInBundle(sourcePath, selectedAsset.m_PathID, selectedAsset.Text, imagePath, tempPath, settings);
+                else
+                    ReplaceInAssetsFile(sourcePath, selectedAsset.m_PathID, selectedAsset.Text, imagePath, tempPath, settings);
+
+                if (!File.Exists(tempPath) || new FileInfo(tempPath).Length == 0)
+                    throw new IOException("The replacement produced an empty output file.");
+
+                if (File.Exists(outputPath))
+                    File.Delete(outputPath);
+
+                File.Move(tempPath, outputPath);
+            }
+            finally
+            {
+                if (File.Exists(tempPath))
+                    File.Delete(tempPath);
+            }
+        }
+
+        private static void ValidateSettings(JuanchoTextureSettings settings)
+        {
+            if (settings.Width < 1 || settings.Height < 1)
+                throw new ArgumentOutOfRangeException(nameof(settings), "Texture width and height must be greater than zero.");
+
+            if (!Enum.IsDefined(typeof(ATTextureFormat), settings.Format))
+                throw new ArgumentException($"Texture format value {settings.Format} is not supported by this build.");
+
+            int maxMipCount = GetMaxMipCount(settings.Width, settings.Height);
+            if (settings.MipCount < 1 || settings.MipCount > maxMipCount)
+                throw new ArgumentOutOfRangeException(nameof(settings), $"Mip count must be between 1 and {maxMipCount} for {settings.Width} × {settings.Height}.");
+
+            if (!settings.GenerateMipMaps && settings.MipCount != 1)
+                throw new ArgumentException("Mip count must be 1 when mip maps are disabled.");
+
+            if (settings.AnisoLevel < 1 || settings.AnisoLevel > 16)
+                throw new ArgumentOutOfRangeException(nameof(settings), "Anisotropic level must be between 1 and 16.");
+
+            if (settings.WrapMode < 0 || settings.WrapMode > 3)
+                throw new ArgumentOutOfRangeException(nameof(settings), "Wrap mode is invalid.");
         }
 
         private static void ReplaceInAssetsFile(string sourcePath, long pathId, string assetName, string imagePath, string outputPath, JuanchoTextureSettings settings)
@@ -74,24 +118,31 @@ namespace AssetStudioGUI
                     if (fileInst == null) continue;
                     var info = fileInst.file.GetAssetInfo(pathId);
                     if (info == null || info.GetTypeId(fileInst.file) != (int)AssetClassID.Texture2D) continue;
+
                     var baseField = manager.GetBaseField(fileInst, info);
                     string currentName = baseField["m_Name"].AsString;
                     if (!string.IsNullOrEmpty(assetName) && !string.Equals(currentName, assetName, StringComparison.Ordinal)) continue;
+
                     targetFile = fileInst;
                     targetInfo = info;
                     break;
                 }
+
                 if (targetFile == null || targetInfo == null)
                     throw new InvalidOperationException($"Texture2D with Path ID {pathId} was not found.");
 
                 ReplaceTextureInAssetsFile(manager, targetFile, pathId, assetName, imagePath, settings, targetInfo);
+
                 int directoryIndex = bundle.file.GetFileIndex(targetFile.name);
                 if (directoryIndex < 0) throw new InvalidOperationException($"Bundle entry '{targetFile.name}' was not found.");
+
                 bundle.file.BlockAndDirInfo.DirectoryInfos[directoryIndex].SetNewData(targetFile.file);
 
                 using var writer = new AssetsFileWriter(outputPath);
-                if (bundle.originalCompression == AssetBundleCompressionType.None) bundle.file.Write(writer);
-                else bundle.file.Pack(writer, bundle.originalCompression);
+                if (bundle.originalCompression == AssetBundleCompressionType.None)
+                    bundle.file.Write(writer);
+                else
+                    bundle.file.Pack(writer, bundle.originalCompression);
             }
             finally
             {
@@ -110,8 +161,11 @@ namespace AssetStudioGUI
             AssetFileInfo knownInfo = null)
         {
             EnsureClassDatabase(manager, fileInst);
+
             var info = knownInfo ?? fileInst.file.GetAssetInfo(pathId);
-            if (info == null) throw new InvalidOperationException($"Texture2D with Path ID {pathId} was not found.");
+            if (info == null)
+                throw new InvalidOperationException($"Texture2D with Path ID {pathId} was not found.");
+
             if (info.GetTypeId(fileInst.file) != (int)AssetClassID.Texture2D)
                 throw new InvalidOperationException($"Path ID {pathId} is not a Texture2D.");
 
@@ -122,6 +176,7 @@ namespace AssetStudioGUI
 
             var texture = TextureFile.ReadTextureFile(baseField);
             texture.m_TextureFormat = settings.Format;
+
             texture.m_TextureSettings.m_FilterMode = settings.FilterMode;
             texture.m_TextureSettings.m_Aniso = settings.AnisoLevel;
             texture.m_TextureSettings.m_MipBias = settings.MipMapBias;
@@ -129,11 +184,15 @@ namespace AssetStudioGUI
             texture.m_TextureSettings.m_WrapU = settings.WrapMode;
             texture.m_TextureSettings.m_WrapV = settings.WrapMode;
             texture.m_TextureSettings.m_WrapW = settings.WrapMode;
+
             texture.m_PlatformBlob = Array.Empty<byte>();
+            texture.m_StreamingMipmaps = false;
+            texture.m_StreamingMipmapsPriority = 0;
 
             byte[] rgbaData;
             int sourceWidth;
             int sourceHeight;
+
             using (var stream = File.OpenRead(imagePath))
             {
                 var image = ImageResult.FromStream(stream, StbColorComponents.RedGreenBlueAlpha);
@@ -142,13 +201,20 @@ namespace AssetStudioGUI
                 sourceHeight = image.Height;
             }
 
-            byte[] resizedData = ResizeRgba(rgbaData, sourceWidth, sourceHeight, settings.Width, settings.Height);
+            byte[] resizedData = ResizeRgbaBilinear(
+                rgbaData,
+                sourceWidth,
+                sourceHeight,
+                settings.Width,
+                settings.Height);
 
-            int mipCount = settings.GenerateMipMaps ? Math.Max(1, settings.MipCount) : 1;
-            ATTextureFormat selectedFormat = (ATTextureFormat)settings.Format;
-            bool useBgraForEncoder = settings.UseBgra && selectedFormat == ATTextureFormat.BGRA32;
-            if (useBgraForEncoder)
+            // StbImageSharp provides RGBA32. The channel choice controls the
+            // byte order supplied to the encoder for formats where that distinction applies.
+            if (settings.UseBgra)
                 SwapRedBlueInplace(resizedData);
+
+            int mipCount = settings.GenerateMipMaps ? settings.MipCount : 1;
+            bool useBgraInput = settings.UseBgra;
 
             texture.EncodeTextureRaw(
                 resizedData,
@@ -157,30 +223,60 @@ namespace AssetStudioGUI
                 (ATTextureFormat)settings.Format,
                 mipCount,
                 quality: 3,
-                useBgra: useBgraForEncoder);
+                useBgra: useBgraInput);
 
-            if (!settings.GenerateMipMaps)
-                texture.m_MipCount = 1;
+            if (settings.GenerateMipMaps && settings.MipCount > 1 && texture.m_MipCount < settings.MipCount)
+                throw new InvalidOperationException(
+                    $"The selected encoder generated only {texture.m_MipCount} mip level(s), but {settings.MipCount} were requested. " +
+                    "The bundled native encoder is required for multi-mip output.");
+
+            texture.m_MipCount = settings.GenerateMipMaps ? texture.m_MipCount : 1;
             texture.m_MipMap = settings.GenerateMipMaps;
-            texture.m_StreamingMipmaps = false;
-            texture.m_StreamingMipmapsPriority = 0;
 
             texture.WriteTo(baseField);
             info.SetNewData(baseField);
         }
 
-        private static bool IsRawChannelFormat(ATTextureFormat format)
+        private static byte[] ResizeRgbaBilinear(byte[] source, int sourceWidth, int sourceHeight, int targetWidth, int targetHeight)
         {
-            return format == ATTextureFormat.RGBA32 ||
-                   format == ATTextureFormat.BGRA32 ||
-                   format == ATTextureFormat.RGB24 ||
-                   format == ATTextureFormat.RGB565 ||
-                   format == ATTextureFormat.R8 ||
-                   format == ATTextureFormat.R16 ||
-                   format == ATTextureFormat.RG16 ||
-                   format == ATTextureFormat.RGBA4444 ||
-                   format == ATTextureFormat.ARGB4444 ||
-                   format == ATTextureFormat.Alpha8;
+            if (sourceWidth == targetWidth && sourceHeight == targetHeight)
+                return (byte[])source.Clone();
+
+            byte[] result = new byte[targetWidth * targetHeight * 4];
+
+            double xScale = sourceWidth / (double)targetWidth;
+            double yScale = sourceHeight / (double)targetHeight;
+
+            for (int y = 0; y < targetHeight; y++)
+            {
+                double srcY = ((y + 0.5) * yScale) - 0.5;
+                int y0 = Math.Max(0, Math.Min(sourceHeight - 1, (int)Math.Floor(srcY)));
+                int y1 = Math.Min(sourceHeight - 1, y0 + 1);
+                double fy = Math.Max(0, Math.Min(1, srcY - Math.Floor(srcY)));
+
+                for (int x = 0; x < targetWidth; x++)
+                {
+                    double srcX = ((x + 0.5) * xScale) - 0.5;
+                    int x0 = Math.Max(0, Math.Min(sourceWidth - 1, (int)Math.Floor(srcX)));
+                    int x1 = Math.Min(sourceWidth - 1, x0 + 1);
+                    double fx = Math.Max(0, Math.Min(1, srcX - Math.Floor(srcX)));
+
+                    int p00 = (y0 * sourceWidth + x0) * 4;
+                    int p10 = (y0 * sourceWidth + x1) * 4;
+                    int p01 = (y1 * sourceWidth + x0) * 4;
+                    int p11 = (y1 * sourceWidth + x1) * 4;
+                    int dst = (y * targetWidth + x) * 4;
+
+                    for (int channel = 0; channel < 4; channel++)
+                    {
+                        double top = source[p00 + channel] * (1 - fx) + source[p10 + channel] * fx;
+                        double bottom = source[p01 + channel] * (1 - fx) + source[p11 + channel] * fx;
+                        result[dst + channel] = (byte)Math.Max(0, Math.Min(255, Math.Round(top * (1 - fy) + bottom * fy)));
+                    }
+                }
+            }
+
+            return result;
         }
 
         private static void SwapRedBlueInplace(byte[] data)
@@ -193,35 +289,28 @@ namespace AssetStudioGUI
             }
         }
 
-        private static byte[] ResizeRgba(byte[] source, int sourceWidth, int sourceHeight, int targetWidth, int targetHeight)
+        private static int GetMaxMipCount(int width, int height)
         {
-            if (sourceWidth == targetWidth && sourceHeight == targetHeight)
-                return (byte[])source.Clone();
-
-            byte[] result = new byte[targetWidth * targetHeight * 4];
-            for (int y = 0; y < targetHeight; y++)
+            int maxDimension = Math.Max(1, Math.Max(width, height));
+            int count = 1;
+            while (maxDimension > 1)
             {
-                int sourceY = Math.Min(sourceHeight - 1, y * sourceHeight / targetHeight);
-                for (int x = 0; x < targetWidth; x++)
-                {
-                    int sourceX = Math.Min(sourceWidth - 1, x * sourceWidth / targetWidth);
-                    int sourceIndex = (sourceY * sourceWidth + sourceX) * 4;
-                    int targetIndex = (y * targetWidth + x) * 4;
-                    result[targetIndex] = source[sourceIndex];
-                    result[targetIndex + 1] = source[sourceIndex + 1];
-                    result[targetIndex + 2] = source[sourceIndex + 2];
-                    result[targetIndex + 3] = source[sourceIndex + 3];
-                }
+                maxDimension >>= 1;
+                count++;
             }
-            return result;
+            return count;
         }
 
         private static void EnsureClassDatabase(ATAssetsManager manager, AssetsFileInstance fileInst)
         {
             if (fileInst.file.Metadata.TypeTreeEnabled || manager.ClassDatabase != null) return;
+
             string package = Path.Combine(AppContext.BaseDirectory, "classdata.tpk");
             if (!File.Exists(package))
-                throw new InvalidOperationException("This file has no embedded TypeTree. Place classdata.tpk next to the executable.");
+                throw new InvalidOperationException(
+                    "This Unity file has no embedded TypeTree and classdata.tpk was not found. " +
+                    "The Juancho package normally includes classdata.tpk; reinstall the complete package.");
+
             manager.LoadClassPackage(package);
             manager.LoadClassDatabaseFromPackage(fileInst.file.Metadata.UnityVersion);
         }
@@ -231,7 +320,8 @@ namespace AssetStudioGUI
             using var stream = File.OpenRead(path);
             var signature = new byte[7];
             int read = stream.Read(signature, 0, signature.Length);
-            return read == signature.Length && Encoding.ASCII.GetString(signature).StartsWith("Unity", StringComparison.Ordinal);
+            return read == signature.Length &&
+                   Encoding.ASCII.GetString(signature).StartsWith("Unity", StringComparison.Ordinal);
         }
     }
 }
