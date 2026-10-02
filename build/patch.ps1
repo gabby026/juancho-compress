@@ -21,7 +21,7 @@ if ($projText -notmatch 'AssetsTools\.NET"') {
     if (-not $projText.Contains($marker)) { throw "Could not find Newtonsoft.Json PackageReference marker." }
     $projText = $projText.Replace(
         $marker,
-        $marker + [Environment]::NewLine + $tab + $tab + '<PackageReference Include="AssetsTools.NET" Version="3.0.5" />' + [Environment]::NewLine + $tab + $tab + '<PackageReference Include="AssetsTools.NET.Texture" Version="3.0.2" />'
+        $marker + [Environment]::NewLine + $tab + $tab + '<PackageReference Include="AssetsTools.NET" Version="3.0.5" />' + [Environment]::NewLine + $tab + $tab + '<PackageReference Include="AssetsTools.NET.Texture" Version="3.0.2" />' + [Environment]::NewLine + $tab + $tab + '<PackageReference Include="StbImageSharp" Version="2.30.16" />'
     )
     Set-Content $csproj $projText -Encoding UTF8
 }
