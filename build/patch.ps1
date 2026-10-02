@@ -111,9 +111,10 @@ if ($formText -notmatch 'replaceSelectedTextureToolStripMenuItem_Click') {
 "                    StatusStripUpdate(""Juancho: replacing selected Texture2D..."");" + $nl +
 "                    try" + $nl +
 "                    {" + $nl +
-"                        await Task.Run(() => JuanchoTextureReplacer.ReplaceTexture(selectedAsset, imageDialog.FileName, saveDialog.FileName, settings));" + $nl +
+"                        JuanchoReplacementResult result = await Task.Run(() => JuanchoTextureReplacer.ReplaceTexture(selectedAsset, imageDialog.FileName, saveDialog.FileName, settings));" + $nl +
 "                        StatusStripUpdate(""Juancho: Texture2D replacement finished."");" + $nl +
-"                        MessageBox.Show(this, ""Texture2D replaced successfully."" + Environment.NewLine + Environment.NewLine + ""Saved file:"" + Environment.NewLine + saveDialog.FileName, ""Juancho"", MessageBoxButtons.OK, MessageBoxIcon.Information);" + $nl +
+"                        string actual = $""{result.Width} × {result.Height}, {(AssetsTools.NET.Texture.TextureFormat)result.Format}, {result.MipCount} mip(s)"";" + $nl +
+"                        MessageBox.Show(this, ""Texture2D replaced and verified successfully."" + Environment.NewLine + Environment.NewLine + ""Final Texture2D settings:"" + Environment.NewLine + actual + Environment.NewLine + Environment.NewLine + ""Saved file:"" + Environment.NewLine + saveDialog.FileName, ""Juancho"", MessageBoxButtons.OK, MessageBoxIcon.Information);" + $nl +
 "                    }" + $nl +
 "                    catch (Exception ex)" + $nl +
 "                    {" + $nl +
