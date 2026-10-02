@@ -276,27 +276,21 @@ namespace AssetStudioGUI
                     if (bundle == null || bundle.file == null)
                         throw new InvalidOperationException("The saved Unity bundle could not be reopened for verification.");
 
-                    try
+                    foreach (var directoryInfo in bundle.file.BlockAndDirInfo.DirectoryInfos)
                     {
-                        foreach (var directoryInfo in bundle.file.BlockAndDirInfo.DirectoryInfos)
-                        {
-                            if (!directoryInfo.IsSerialized) continue;
-                            var fileInst = manager.LoadAssetsFileFromBundle(bundle, directoryInfo.Name, false);
-                            if (fileInst == null) continue;
-                            var info = fileInst.file.GetAssetInfo(pathId);
-                            if (info == null || info.GetTypeId(fileInst.file) != (int)AssetClassID.Texture2D) continue;
+                        if (!directoryInfo.IsSerialized) continue;
+                        var fileInst = manager.LoadAssetsFileFromBundle(bundle, directoryInfo.Name, false);
+                        if (fileInst == null) continue;
+                        var info = fileInst.file.GetAssetInfo(pathId);
+                        if (info == null || info.GetTypeId(fileInst.file) != (int)AssetClassID.Texture2D) continue;
 
-                            EnsureClassDatabase(manager, fileInst);
-                            var field = manager.GetBaseField(fileInst, info);
-                            string name = field["m_Name"].AsString;
-                            if (!string.IsNullOrEmpty(assetName) && !string.Equals(name, assetName, StringComparison.Ordinal)) continue;
+                        EnsureClassDatabase(manager, fileInst);
+                        var field = manager.GetBaseField(fileInst, info);
+                        string name = field["m_Name"].AsString;
+                        if (!string.IsNullOrEmpty(assetName) && !string.Equals(name, assetName, StringComparison.Ordinal)) continue;
 
-                            texture = TextureFile.ReadTextureFile(field);
-                            break;
-                        }
-                    }
-                    finally
-                    {
+                        texture = TextureFile.ReadTextureFile(field);
+                        break;
                     }
                 }
                 else
